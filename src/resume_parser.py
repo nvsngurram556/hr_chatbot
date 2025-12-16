@@ -3,6 +3,7 @@ from pdfminer.high_level import extract_text
 import re
 import spacy
 
+resume_path = "/Users/satya/hr_chatbot/resume/resume.pdf" 
 def extract_resume_text(file_path):
     if file_path.endswith(".pdf"):
         return extract_text(file_path)
@@ -67,7 +68,6 @@ def parse_resume(file_path):
         "skills": extract_skills(text)
     }
 
-
-resume_path = "/Users/satya/hr_chatbot/resume/resume.pdf" 
-parsed_data = parse_resume(resume_path)
-print(parsed_data)
+if __name__ == "__main__":
+    parsed_data = parse_resume(resume_path)
+    print(parsed_data)

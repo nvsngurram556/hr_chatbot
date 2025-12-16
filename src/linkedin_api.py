@@ -3,17 +3,9 @@ import json
 
 # --- Configuration (REPLACE THESE) ---
 # Your LinkedIn Page's ID (Organizational URN, e.g., 'urn:li:organization:123456')
-ORG_URN = "urn:li:organization:109573414"
-# Your Developer Access Token (must have the w_organization_social permission)
-ACCESS_TOKEN = "AQXZ9DGnlPHsZImVe_4T_aqzij_i1Q1IpBtSRifpdO3xknIgHccIIHFg3HowXE4YO5LUFJ1Fw4iaHtR5Fw2mmKrcTkmvThJMVWRxj-CnCtBtKJxapdil7owOU9gLyG1DaRWEwZ5T_kNJWrPW_4yBn9GdW0s1b-yiDQkaPFNJJbbuWwaID0GD1Dl7I6y8v4nXBkWgepjI5POas0_g8yWJjX6oXHu4lIzx5jH22sTxv4AVmnojqQuzE2Rsdyox2g3dse5MZlbiPVB2Esh5k81gecNcu7nFeheUSGVanyjHpfqQThAF9fEBPvGSR8aI61htlv549qf0WLDCWl8xPxjhBx7v6_2Ozg"
 
 # The text content for your post
-POST_TEXT = ("Hello Everyone! This is a post created for collecting sample resumes for my Dissertation project.\n"
-             "Please help me by applying for the position with your resumes.\n"
-             "For applying the position please fill the form below:\n"
-             "https://docs.google.com/forms/d/e/1FAIpQLSdSACdRA6KOjY-SXQl0unwXJK3_dxDFSrQyECKqpWCZ1EfnPw/viewform?usp=sharing&ouid=111372244744191018484\n"
-             "Thank you for your response!\n"
-             "#LinkedInAPI #Automation #POC")
+
 # --- End Configuration ---
 
 def publish_linkedin_post(org_urn, access_token, post_text):
@@ -81,15 +73,23 @@ def publish_linkedin_post(org_urn, access_token, post_text):
             print(f"Error details: {response.text}")
         return None
 
-# --- Execution ---
-post_info = publish_linkedin_post(ORG_URN, ACCESS_TOKEN, POST_TEXT)
 
-if post_info:
-    print("\n--- Post Info Object ---")
+def main():
+    ORG_URN = "urn:li:organization:109573414"
+# Your Developer Access Token (must have the w_organization_social permission)
+    ACCESS_TOKEN = "AQXZ9DGnlPHsZImVe_4T_aqzij_i1Q1IpBtSRifpdO3xknIgHccIIHFg3HowXE4YO5LUFJ1Fw4iaHtR5Fw2mmKrcTkmvThJMVWRxj-CnCtBtKJxapdil7owOU9gLyG1DaRWEwZ5T_kNJWrPW_4yBn9GdW0s1b-yiDQkaPFNJJbbuWwaID0GD1Dl7I6y8v4nXBkWgepjI5POas0_g8yWJjX6oXHu4lIzx5jH22sTxv4AVmnojqQuzE2Rsdyox2g3dse5MZlbiPVB2Esh5k81gecNcu7nFeheUSGVanyjHpfqQThAF9fEBPvGSR8aI61htlv549qf0WLDCWl8xPxjhBx7v6_2Ozg"
+    POST_TEXT = ("Hello Everyone! This is a post created for collecting sample resumes for my Dissertation project.\n"
+             "Please help me by applying for the position with your resumes.\n"
+             "For applying the position please fill the form below:\n"
+             "https://docs.google.com/forms/d/e/1FAIpQLSdSACdRA6KOjY-SXQl0unwXJK3_dxDFSrQyECKqpWCZ1EfnPw/viewform?usp=sharing&ouid=111372244744191018484\n"
+             "Thank you for your response!\n"
+             "#LinkedInAPI #Automation #POC")
+    post_info = publish_linkedin_post(ORG_URN, ACCESS_TOKEN, POST_TEXT)
     print(json.dumps(post_info, indent=4))
-    
-    # You can now use the 'post_info["post_urn"]' for deletion later
-    # The deletion endpoint is: DELETE https://api.linkedin.com/v2/ugcPosts/{post_urn}
-    # Example: print(f"URN for deletion: {post_info['post_urn']}")
 
-    
+if __name__ == "__main__":
+    main()
+
+        # You can now use the 'post_info["post_urn"]' for deletion later
+        # The deletion endpoint is: DELETE https://api.linkedin.com/v2/ugcPosts/{post_urn}
+        # Example: print(f"URN for deletion: {post_info['post_urn']}")
