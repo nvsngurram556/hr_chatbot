@@ -31,16 +31,16 @@ def publish_linkedin_post(org_urn, access_token, post_text):
                 "post_id": post_id,
                 "post_url": post_url
             }
-            
-            print("✅ Post published successfully!")
+            print("\033[92mPost published successfully!\033[0m")
+            #print("Post published successfully!")
             print(f"Post URL: {post_url}")
             return post_object
         else:
-            print("⚠️ Success response but could not find 'x-restli-id' header.")
+            print("Success response but could not find 'x-restli-id' header.")
             return None
 
     except requests.exceptions.RequestException as e:
-        print(f"❌ An error occurred during the API call: {e}")
+        print(f"An error occurred during the API call: {e}")
         if 'response' in locals() and response.text:
             print(f"Error details: {response.text}")
         return None
