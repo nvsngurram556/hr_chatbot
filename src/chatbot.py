@@ -1,22 +1,16 @@
 import streamlit as st
 
-# ---------------- Streamlit Setup ---------------- #
 ORG_URN = "urn:li:organization:109573414"
-# Your Developer Access Token (must have the w_organization_social permission)
 ACCESS_TOKEN = "AQXZ9DGnlPHsZImVe_4T_aqzij_i1Q1IpBtSRifpdO3xknIgHccIIHFg3HowXE4YO5LUFJ1Fw4iaHtR5Fw2mmKrcTkmvThJMVWRxj-CnCtBtKJxapdil7owOU9gLyG1DaRWEwZ5T_kNJWrPW_4yBn9GdW0s1b-yiDQkaPFNJJbbuWwaID0GD1Dl7I6y8v4nXBkWgepjI5POas0_g8yWJjX6oXHu4lIzx5jH22sTxv4AVmnojqQuzE2Rsdyox2g3dse5MZlbiPVB2Esh5k81gecNcu7nFeheUSGVanyjHpfqQThAF9fEBPvGSR8aI61htlv549qf0WLDCWl8xPxjhBx7v6_2Ozg"
 
 st.set_page_config(page_title="HR Chatbot", layout="centered")
 st.title("🤖 HR Assistant Chatbot")
-
-# ---------------- Session State ---------------- #
 
 if "intent" not in st.session_state:
     st.session_state.intent = None
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-
-# ---------------- Helper: Intent Detection ---------------- #
 
 def detect_intent(user_input: str) -> str:
     text = user_input.lower()
@@ -28,19 +22,14 @@ def detect_intent(user_input: str) -> str:
         return "END_CHAT"
     return "UNKNOWN"
 
-# ---------------- Display Chat History ---------------- #
-
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
-
-# ---------------- User Chat Input ---------------- #
 
 if st.session_state.intent != "END_CHAT":
     user_input = st.chat_input("Type: 'Post Job' or 'Scan Resume'")
 
     if user_input:
-        # Store user message
         st.session_state.messages.append(
             {"role": "user", "content": user_input}
         )
@@ -62,8 +51,6 @@ if st.session_state.intent != "END_CHAT":
         )
 
         st.rerun()
-
-# ================= JOB POST FLOW ================= #
 
 if st.session_state.intent == "JOB_POST":
     with st.chat_message("assistant"):
@@ -97,8 +84,6 @@ if st.session_state.intent == "JOB_POST":
             except Exception as e:
                 st.error(f"❌ Error posting job: {e}")
 
-# ================= RESUME PARSER FLOW ================= #
-
 elif st.session_state.intent == "SCAN_RESUME":
     with st.chat_message("assistant"):
         from resume_parser import parse_resume, resume_path
@@ -113,8 +98,6 @@ elif st.session_state.intent == "SCAN_RESUME":
             })
         except Exception as e:
             st.error(f"❌ Error parsing resume: {e}")
-
-# ================= END CHAT FLOW ================= #
 
 elif st.session_state.intent == "END_CHAT":
     with st.chat_message("assistant"):
