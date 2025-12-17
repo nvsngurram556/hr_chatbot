@@ -1,7 +1,5 @@
-import docx2txt
+import docx2txt, re, spacy
 from pdfminer.high_level import extract_text
-import re
-import spacy
 
 def extract_resume_text(file_path):
     if file_path.endswith(".pdf"):
@@ -28,8 +26,6 @@ def extract_name(text):
         if ent.label_ == "PERSON":
             start = ent.start
             end = ent.end
-
-            # Extend right for comma + proper noun
             while end < len(doc):
                 if doc[end].text == ",":
                     end += 1
@@ -67,7 +63,7 @@ def parse_resume(file_path):
         "skills": extract_skills(text)
     }
 
-
 resume_path = "/Users/satya/hr_chatbot/resume/resume.pdf" 
-parsed_data = parse_resume(resume_path)
-print(parsed_data)
+if __name__ == "__main__":
+    parsed_data = parse_resume(resume_path)
+    print(parsed_data)
