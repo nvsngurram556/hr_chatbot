@@ -1,8 +1,94 @@
-import streamlit as st
+import streamlit as st, os, csv, pandas as pd
+from user_auth import authenticate_user
+
+# ---------------- LOGIN STATE ----------------
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if "user" not in st.session_state:
+    st.session_state.user = None
 
 ORG_URN = "urn:li:organization:109573414"
 ACCESS_TOKEN = " AQX8EopOhqQwRZUQew2ULpX1hZqCo9gmfyg7_hxU5QOolLHviBP-6EmPEJqM5K0MxvIDSK4YjxXCHzXvvzgTa8VkXuF_JbjSZ8UZpK8hisJ3mcYXScCEVc9FxZWNV3JhSUjlc9IA2hiEUCfmJrVRgkuOmdLlzbcdM24qhL9rSgwRGLrGHopDhryl9CXT5qkVCaDm-d71KjFVvwhqiPjs-78K-ic_t2byfLbs4norLAVsVFo1pTp-a4LauffXw3eaFz2NRef7p49dRzj0hLMYLEjg-vA2lqbVLZTJV2k3uurFvrACIHflBbqqn88t54ptwLFp8w6M-UZ1hdVYJvGw11vsxOmJng"
+job_post_file = "/Users/satya/hr_chatbot/output/job_post.csv"
+positions_file = "/Users/satya/hr_chatbot/output/parsed_resumes.csv"
 
+# ---------------- AGENT LAYER (NON-INTRUSIVE) ----------------
+
+class HRChatAgent:
+    def __init__(self):
+        self.tools = {
+            "JOB_POST": self.job_post_agent,
+            "SCAN_RESUME": self.scan_resume_agent,
+            "SHOW_OPEN_POSITIONS": self.show_open_positions_agent,
+            "END_CHAT": self.end_chat_agent
+        }
+
+    def run(self, intent: str):
+        handler = self.tools.get(intent, self.unknown_agent)
+        return handler()
+
+    def job_post_agent(self):
+        return {
+            "action": "JOB_POST",
+            "message": "📝 Agent activated job posting capability."
+        }
+
+    def scan_resume_agent(self):
+        return {
+            "action": "SCAN_RESUME",
+            "message": "📄 Agent activated resume scanning capability."
+        }
+
+    def show_open_positions_agent(self):
+        return {
+            "action": "SHOW_OPEN_POSITIONS",
+            "message": "📋 Here are the open positions:"
+        }
+
+    def end_chat_agent(self):
+        return {
+            "action": "END_CHAT",
+            "message": "👋 Agent decided to end the chat."
+        }
+
+    def unknown_agent(self):
+        return {
+            "action": "UNKNOWN",
+            "message": "❓ Agent could not determine a valid action."
+        }
+
+agent = HRChatAgent()
+# ---------------- LOGIN UI ----------------
+def login_ui():
+    st.set_page_config(page_title="HR Chatbot Login", layout="centered")
+    st.title("🔐 HR Chatbot Login")
+
+    with st.form("login_form"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Login")
+
+    if submitted:
+        user = authenticate_user(username, password)
+        if user:
+            st.session_state.authenticated = True
+            st.session_state.user = user
+            st.success(f"Welcome {user['full_name']} 👋")
+            st.rerun()
+        else:
+            st.error("❌ Invalid username or password")
+
+if not st.session_state.authenticated:
+    login_ui()
+    st.stop()
+# ---------------- CHATBOT UI ----------------
+st.sidebar.success(f"Logged in as {st.session_state.user['full_name']}")
+
+if st.sidebar.button("Logout"):
+    st.session_state.authenticated = False
+    st.session_state.user = None
+    st.rerun()
 st.set_page_config(page_title="HR Chatbot", layout="centered")
 st.title("🤖 HR Assistant Chatbot")
 
@@ -20,6 +106,8 @@ def detect_intent(user_input: str) -> str:
         return "SCAN_RESUME"
     if "end" in text or "exit" in text or "quit" in text:
         return "END_CHAT"
+    if "open positions" in text or "show open positions" in text or "open list" in text:
+        return "SHOW_OPEN_POSITIONS"
     return "UNKNOWN"
 
 for msg in st.session_state.messages:
@@ -37,17 +125,9 @@ if st.session_state.intent != "END_CHAT":
         intent = detect_intent(user_input)
         st.session_state.intent = intent
 
-        if intent == "JOB_POST":
-            assistant_msg = "📝 Please enter the **job description** and click **Submit**."
-        elif intent == "SCAN_RESUME":
-            assistant_msg = "📄 Please **upload a resume file** and click **Parse Resume**."
-        elif intent == "END_CHAT":
-            assistant_msg = "👋 Thank you for using the HR Assistant Chatbot. Goodbye!"
-        else:
-            assistant_msg = "❓ I can help with **Job Posting** or **Resume Scanning**."
-
+        agent_result = agent.run(intent)
         st.session_state.messages.append(
-            {"role": "assistant", "content": assistant_msg}
+            {"role": "assistant", "content": agent_result["message"]}
         )
 
         st.rerun()
@@ -57,6 +137,10 @@ if st.session_state.intent == "JOB_POST":
         with st.form("job_post_form"):
             job_description = st.text_area(
                 "Job Description",
+                placeholder="Enter job role, skills, experience..."
+            )
+            job_skills = st.text_area(
+                "Job skills required",
                 placeholder="Enter job role, skills, experience..."
             )
             submitted = st.form_submit_button("Submit Job Post")
@@ -69,6 +153,18 @@ if st.session_state.intent == "JOB_POST":
                     ACCESS_TOKEN,
                     job_description
                 )
+                file_exists = os.path.isfile(job_post_file)
+                os.makedirs(os.path.dirname(job_post_file), exist_ok=True)
+                with open(job_post_file, mode="a", newline="", encoding="utf-8") as f:
+                    writer = csv.DictWriter(f, fieldnames=["job_description", "job_skills", "job_post_id", "status"])
+                    if not file_exists:
+                        writer.writeheader()
+                    writer.writerow({
+                        "job_description": job_description,
+                        "job_skills": job_skills,
+                        "job_post_id": response.get("post_id"),
+                        "status": "open"
+                    })
 
                 st.success("✅ Job posted successfully on LinkedIn!")
 
@@ -87,8 +183,20 @@ if st.session_state.intent == "JOB_POST":
 elif st.session_state.intent == "SCAN_RESUME":
     with st.chat_message("assistant"):
         from resume_parser import parse_resume, resume_path
-        parsed_data = parse_resume(resume_path)
         try:
+            parsed_data = parse_resume(resume_path)
+            file_exists = os.path.isfile(positions_file)
+            os.makedirs(os.path.dirname(positions_file), exist_ok=True)
+            with open(positions_file, mode="a", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=["Name", "email", "phone", "skills"])
+                if not file_exists:
+                    writer.writeheader()
+                writer.writerow({
+                    "Name": parsed_data.get("name"),
+                    "email": parsed_data.get("email"),
+                    "phone": parsed_data.get("phone"),
+                    "skills": parsed_data.get("skills")
+                })
             st.warning("⚠️ Please upload a resume file.")
             st.success("✅ Resume parsed successfully!")
             st.json(parsed_data)
@@ -98,6 +206,24 @@ elif st.session_state.intent == "SCAN_RESUME":
             })
         except Exception as e:
             st.error(f"❌ Error parsing resume: {e}")
+
+elif st.session_state.intent == "SHOW_OPEN_POSIPTIONS":
+    with st.chat_message("assistant"):
+        try:
+            file_exists = os.path.isfile(job_post_file)
+            if file_exists:
+                st.success("✅ Open positions found!")
+                df = pd.read_csv(job_post_file)
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": "📋 Here are the open positions:"
+                })
+                open_list = pd.DataFrame(df).filter(items=["job_post_id"]).where(df['status'] == "open")
+                st.table(open_list)
+            else:
+                st.warning("⚠️ No open positions found.")
+        except Exception as e:
+            st.error(f"❌ Error retrieving open positions: {e}")
 
 elif st.session_state.intent == "END_CHAT":
     with st.chat_message("assistant"):
