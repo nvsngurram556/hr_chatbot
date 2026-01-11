@@ -1,9 +1,13 @@
 import docx2txt
 from pdfminer.high_level import extract_text
 import re
+import os
+import csv
 import spacy
 
-resume_path = "/Users/satya/hr_chatbot/resume/resume.pdf" 
+resume_path = "/Users/satya/hr_chatbot/resume/resume.pdf"
+csv_file = "/Users/satya/hr_chatbot/output/parsed_resumes.csv"
+
 def extract_resume_text(file_path):
     if file_path.endswith(".pdf"):
         return extract_text(file_path)
@@ -68,6 +72,21 @@ def parse_resume(file_path):
         "skills": extract_skills(text)
     }
 
+def save_to_csv(data, csv_file):
+    file_exists = os.path.isfile(csv_file)
+
+    os.makedirs(os.path.dirname(csv_file), exist_ok=True)
+
+    with open(csv_file, mode="a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=data.keys())
+
+        if not file_exists:
+            writer.writeheader()   # Write header only once
+
+        writer.writerow(data)
+
 if __name__ == "__main__":
     parsed_data = parse_resume(resume_path)
+    save_to_csv(parsed_data, csv_file)
+    print("✅ Resume parsed and saved to CSV")
     print(parsed_data)
