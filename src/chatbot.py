@@ -1,5 +1,28 @@
 import streamlit as st, os, csv, pandas as pd
-from user_auth import authenticate_user
+import gspread, configparser
+from google.oauth2.service_account import Credentials
+from googleapiclient.discovery import build
+from agent import HRChatAgent
+from gservice import authenticate_user, get_drive_service
+
+# Load configuration
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH = os.path.join(BASE_DIR, "config/config.ini")
+
+config = configparser.ConfigParser()
+config.read(CONFIG_PATH)
+
+ORG_URN = config["LINKEDIN_AUTH"]["org_urn"]
+ACCESS_TOKEN = config["LINKEDIN_AUTH"]["access_token"]
+folder_id = config["DRIVE_FOLDERS"]["folder_id"]
+sheet_id = config["GOOGLE"]["spreadsheet_id"]
+job_sheet_range = config["GOOGLE"]["job_sheet_range"]
+resume_sheet_range = config["GOOGLE"]["resume_sheet_range"]
+creds = get_drive_service()
+client = gspread.authorize(creds)
+
+# Open Google Sheet
+sheet = client.open("candidate_info").worksheet("job")
 
 # ---------------- LOGIN STATE ----------------
 if "authenticated" not in st.session_state:
@@ -7,62 +30,16 @@ if "authenticated" not in st.session_state:
 
 if "user" not in st.session_state:
     st.session_state.user = None
-
-ORG_URN = "urn:li:organization:109573414"
-ACCESS_TOKEN = " AQX8EopOhqQwRZUQew2ULpX1hZqCo9gmfyg7_hxU5QOolLHviBP-6EmPEJqM5K0MxvIDSK4YjxXCHzXvvzgTa8VkXuF_JbjSZ8UZpK8hisJ3mcYXScCEVc9FxZWNV3JhSUjlc9IA2hiEUCfmJrVRgkuOmdLlzbcdM24qhL9rSgwRGLrGHopDhryl9CXT5qkVCaDm-d71KjFVvwhqiPjs-78K-ic_t2byfLbs4norLAVsVFo1pTp-a4LauffXw3eaFz2NRef7p49dRzj0hLMYLEjg-vA2lqbVLZTJV2k3uurFvrACIHflBbqqn88t54ptwLFp8w6M-UZ1hdVYJvGw11vsxOmJng"
-job_post_file = "/Users/satya/hr_chatbot/output/job_post.csv"
-positions_file = "/Users/satya/hr_chatbot/output/parsed_resumes.csv"
-
-# ---------------- AGENT LAYER (NON-INTRUSIVE) ----------------
-
-class HRChatAgent:
-    def __init__(self):
-        self.tools = {
-            "JOB_POST": self.job_post_agent,
-            "SCAN_RESUME": self.scan_resume_agent,
-            "SHOW_OPEN_POSITIONS": self.show_open_positions_agent,
-            "END_CHAT": self.end_chat_agent
-        }
-
-    def run(self, intent: str):
-        handler = self.tools.get(intent, self.unknown_agent)
-        return handler()
-
-    def job_post_agent(self):
-        return {
-            "action": "JOB_POST",
-            "message": "📝 Agent activated job posting capability."
-        }
-
-    def scan_resume_agent(self):
-        return {
-            "action": "SCAN_RESUME",
-            "message": "📄 Agent activated resume scanning capability."
-        }
-
-    def show_open_positions_agent(self):
-        return {
-            "action": "SHOW_OPEN_POSITIONS",
-            "message": "📋 Here are the open positions:"
-        }
-
-    def end_chat_agent(self):
-        return {
-            "action": "END_CHAT",
-            "message": "👋 Agent decided to end the chat."
-        }
-
-    def unknown_agent(self):
-        return {
-            "action": "UNKNOWN",
-            "message": "❓ Agent could not determine a valid action."
-        }
-
+# ---------------- FILE PATHS ----------------
 agent = HRChatAgent()
 # ---------------- LOGIN UI ----------------
+
 def login_ui():
     st.set_page_config(page_title="HR Chatbot Login", layout="centered")
     st.title("🔐 HR Chatbot Login")
+
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
 
     with st.form("login_form"):
         username = st.text_input("Username")
@@ -71,10 +48,11 @@ def login_ui():
 
     if submitted:
         user = authenticate_user(username, password)
+
         if user:
             st.session_state.authenticated = True
             st.session_state.user = user
-            st.success(f"Welcome {user['full_name']} 👋")
+            st.success(f"Welcome {user['name']} 👋")
             st.rerun()
         else:
             st.error("❌ Invalid username or password")
@@ -83,7 +61,7 @@ if not st.session_state.authenticated:
     login_ui()
     st.stop()
 # ---------------- CHATBOT UI ----------------
-st.sidebar.success(f"Logged in as {st.session_state.user['full_name']}")
+st.sidebar.success(f"Logged in as {st.session_state.user['name']}")
 
 if st.sidebar.button("Logout"):
     st.session_state.authenticated = False
@@ -100,14 +78,18 @@ if "messages" not in st.session_state:
 
 def detect_intent(user_input: str) -> str:
     text = user_input.lower()
-    if "job" in text or "post" in text:
+    if "job post" in text or "upload job post" in text:
         return "JOB_POST"
-    if "resume" in text or "scan" in text or "cv" in text:
+    if "resume scan" in text or " resume cv" in text:
         return "SCAN_RESUME"
     if "end" in text or "exit" in text or "quit" in text:
         return "END_CHAT"
     if "open positions" in text or "show open positions" in text or "open list" in text:
         return "SHOW_OPEN_POSITIONS"
+    if "match profiles" in text or "rank profiles" in text:
+        return "MATCH_PROFILES"
+    if "update job status" in text or "close job" in text:
+        return "UPDATE_JOB_STATUS"
     return "UNKNOWN"
 
 for msg in st.session_state.messages:
@@ -115,7 +97,7 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 if st.session_state.intent != "END_CHAT":
-    user_input = st.chat_input("Type: 'Post Job' or 'Scan Resume'")
+    user_input = st.chat_input("Type: 'job post' or 'resume scan'")
 
     if user_input:
         st.session_state.messages.append(
@@ -153,19 +135,13 @@ if st.session_state.intent == "JOB_POST":
                     ACCESS_TOKEN,
                     job_description
                 )
-                file_exists = os.path.isfile(job_post_file)
-                os.makedirs(os.path.dirname(job_post_file), exist_ok=True)
-                with open(job_post_file, mode="a", newline="", encoding="utf-8") as f:
-                    writer = csv.DictWriter(f, fieldnames=["job_description", "job_skills", "job_post_id", "status"])
-                    if not file_exists:
-                        writer.writeheader()
-                    writer.writerow({
-                        "job_description": job_description,
-                        "job_skills": job_skills,
-                        "job_post_id": response.get("post_id"),
-                        "status": "open"
-                    })
-
+                sheet = client.open("candidate_info").worksheet("job")
+                sheet.append_row([
+                    job_description,
+                    job_skills,
+                    response.get("post_id"),
+                    "open"
+                ])
                 st.success("✅ Job posted successfully on LinkedIn!")
 
                 st.json(response)
@@ -182,48 +158,157 @@ if st.session_state.intent == "JOB_POST":
 
 elif st.session_state.intent == "SCAN_RESUME":
     with st.chat_message("assistant"):
-        from resume_parser import parse_resume, resume_path
+        from resume_parser import parse_resumes_from_drive, save_resumes_to_sheet
+
         try:
-            parsed_data = parse_resume(resume_path)
-            file_exists = os.path.isfile(positions_file)
-            os.makedirs(os.path.dirname(positions_file), exist_ok=True)
-            with open(positions_file, mode="a", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(f, fieldnames=["Name", "email", "phone", "skills"])
-                if not file_exists:
-                    writer.writeheader()
-                writer.writerow({
-                    "Name": parsed_data.get("name"),
-                    "email": parsed_data.get("email"),
-                    "phone": parsed_data.get("phone"),
-                    "skills": parsed_data.get("skills")
-                })
-            st.warning("⚠️ Please upload a resume file.")
-            st.success("✅ Resume parsed successfully!")
-            st.json(parsed_data)
+            parsed_count = 0
+            parsed_resumes = parse_resumes_from_drive(folder_id, creds)
+            save_resumes_to_sheet(sheet_id, "info", parsed_resumes, creds)
+            parsed_count = len(parsed_resumes)
+            if not parsed_count:
+                st.warning("⚠️ No resumes were parsed successfully")
+                st.stop()
+
+            st.success(f"✅ Parsed {parsed_count} resume(s) successfully")
+
             st.session_state.messages.append({
                 "role": "assistant",
-                "content": "📄 Resume parsed successfully."
+                "content": f"📄 {parsed_count} resumes parsed and saved successfully."
             })
-        except Exception as e:
-            st.error(f"❌ Error parsing resume: {e}")
 
-elif st.session_state.intent == "SHOW_OPEN_POSIPTIONS":
+        except Exception as e:
+            st.error(f"❌ Error during resume scanning: {e}")
+
+elif st.session_state.intent == "SHOW_OPEN_POSITIONS":
     with st.chat_message("assistant"):
         try:
-            file_exists = os.path.isfile(job_post_file)
-            if file_exists:
-                st.success("✅ Open positions found!")
-                df = pd.read_csv(job_post_file)
+            service = build("sheets", "v4", credentials=get_drive_service())
+
+            result = service.spreadsheets().values().get(
+                spreadsheetId=sheet_id,
+                range=job_sheet_range
+            ).execute()
+
+            rows = result.get("values", [])
+
+            if not rows:
+                st.warning("⚠️ No job data found.")
+                st.stop()
+
+            # First row = header
+            header = [h.lower() for h in rows[0]]
+            data_rows = rows[1:]
+            print(header)
+
+            if "status" not in header:
+                st.error("❌ 'status' column not found in job sheet")
+                st.stop()
+
+            status_index = header.index("status")
+
+            # Convert to DataFrame
+            df = pd.DataFrame(data_rows, columns=header)
+
+            # Filter OPEN positions (case-insensitive)
+            open_df = df[df["status"].str.lower() == "open"]
+
+            if open_df.empty:
+                st.warning("⚠️ No open positions found.")
+            else:
+                st.success(f"✅ {len(open_df)} open position(s) found!")
                 st.session_state.messages.append({
                     "role": "assistant",
                     "content": "📋 Here are the open positions:"
                 })
-                open_list = pd.DataFrame(df).filter(items=["job_post_id"]).where(df['status'] == "open")
-                st.table(open_list)
-            else:
-                st.warning("⚠️ No open positions found.")
+                st.table(open_df)
+
         except Exception as e:
             st.error(f"❌ Error retrieving open positions: {e}")
+
+elif st.session_state.intent == "MATCH_PROFILES":
+    with st.chat_message("assistant"):
+        try:
+            job_post_id = st.text_input("Enter Job Post ID to match profiles:")
+            if job_post_id:
+                from match_profiles import rank_resumes
+                ranked_profiles = rank_resumes(
+                    job_post_id,
+                    sheet_id,
+                    job_sheet_range,
+                    resume_sheet_range,
+                    creds
+                )
+                if not ranked_profiles.empty:
+                    st.success("✅ Profiles matched and ranked successfully!")
+                    st.table(ranked_profiles)
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": "📄 Profiles matched and ranked successfully."
+                    })
+                else:
+                    st.warning("⚠️ No matching profiles found.")
+        except Exception as e:
+            st.error(f"❌ Error matching profiles: {e}")
+
+elif st.session_state.intent == "UPDATE_JOB_STATUS":
+    with st.chat_message("assistant"):
+        try:
+            job_post_id = st.text_input("Enter Job Post ID to update status:")
+            new_status = st.selectbox("Select new status:", ["inprogress", "closed"])
+
+            if job_post_id and new_status:
+                service = build("sheets", "v4", credentials=get_drive_service())
+
+                # Read job sheet
+                result = service.spreadsheets().values().get(
+                    spreadsheetId=sheet_id,
+                    range=job_sheet_range
+                ).execute()
+
+                rows = result.get("values", [])
+
+                if not rows:
+                    st.warning("⚠️ Job sheet is empty.")
+                    st.stop()
+
+                header = [h.lower() for h in rows[0]]
+
+                if "job_post_id" not in header or "status" not in header:
+                    st.error("❌ Required columns not found (job_post_id / status)")
+                    st.stop()
+
+                job_id_index = header.index("job_post_id")
+                status_index = header.index("status")
+
+                updated = False
+
+                # Iterate data rows (skip header)
+                for idx, row in enumerate(rows[1:], start=2):  # sheet rows start at 1
+                    if len(row) > job_id_index and row[job_id_index] == job_post_id:
+                        # Update status cell
+                        cell_range = f"{job_sheet_range.split('!')[0]}!{chr(65 + status_index)}{idx}"
+
+                        service.spreadsheets().values().update(
+                            spreadsheetId=sheet_id,
+                            range=cell_range,
+                            valueInputOption="RAW",
+                            body={"values": [[new_status]]}
+                        ).execute()
+
+                        updated = True
+                        break
+
+                if updated:
+                    st.success(f"✅ Job post {job_post_id} status updated to {new_status}!")
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": f"🔄 Job post {job_post_id} status updated to {new_status}."
+                    })
+                else:
+                    st.warning("⚠️ Job Post ID not found.")
+
+        except Exception as e:
+            st.error(f"❌ Error updating job status: {e}")
 
 elif st.session_state.intent == "END_CHAT":
     with st.chat_message("assistant"):
