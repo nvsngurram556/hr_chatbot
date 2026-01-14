@@ -3,3 +3,5 @@ docx2txt
 pdfminer.six
 spacy
 auth
+gspread
+google-auth

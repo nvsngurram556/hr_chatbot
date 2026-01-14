@@ -6,7 +6,7 @@ def authenticate_user(username: str, password: str):
     df = pd.read_csv(
         USERS_CSV,
         header=None,
-        names=["username", "password", "full_name", "email"]
+        names=["username", "password", "name", "email"]
     )
 
     user = df[
@@ -17,7 +17,7 @@ def authenticate_user(username: str, password: str):
     if not user.empty:
         return {
             "username": user.iloc[0]["username"],
-            "full_name": user.iloc[0]["full_name"],
+            "name": user.iloc[0]["name"],
             "email": user.iloc[0]["email"]
         }
 

@@ -1,0 +1,129 @@
+import pandas as pd
+import re
+import ast
+from googleapiclient.discovery import build
+
+SKILL_ALIASES = {
+    "ml": "machine learning",
+    "ai": "artificial intelligence",
+    "mysql": "sql",
+    "postgresql": "sql",
+    "py": "python",
+}
+
+def parse_resume_skills(skill_value):
+    """
+    Handles:
+    - Stringified Python lists
+    - Stringified Python sets
+    - Normal comma separated strings
+    """
+    if pd.isna(skill_value):
+        return set()
+
+    # Case 1: Proper Python literal (list / set)
+    try:
+        parsed = ast.literal_eval(skill_value)
+        if isinstance(parsed, (list, set, tuple)):
+            tokens = parsed
+        else:
+            tokens = [skill_value]
+    except Exception:
+        # Case 2: Fallback — clean string manually
+        cleaned = re.sub(r"[\[\]\{\}']", "", skill_value)
+        tokens = re.split(r"[,\|\n/•]+", cleaned)
+
+    skills = set()
+    for t in tokens:
+        t = str(t).strip().lower()
+        if not t:
+            continue
+        skills.add(SKILL_ALIASES.get(t, t))
+
+    return skills
+
+def parse_job_skills(skill_str):
+    if pd.isna(skill_str):
+        return set()
+
+    tokens = re.split(r"[,\|\n/•]+", skill_str.lower())
+    skills = set()
+
+    for t in tokens:
+        t = t.strip()
+        if not t:
+            continue
+        skills.add(SKILL_ALIASES.get(t, t))
+
+    return skills
+
+def read_sheet_as_dataframe(service, spreadsheet_id, sheet_range):
+    result = service.spreadsheets().values().get(
+        spreadsheetId=spreadsheet_id,
+        range=sheet_range
+    ).execute()
+
+    rows = result.get("values", [])
+    if not rows:
+        return pd.DataFrame()
+
+    header = rows[0]
+    data = rows[1:]
+
+    return pd.DataFrame(data, columns=header)
+# -------------------------------
+# Utility function to normalize skills
+# -------------------------------
+def compute_match_score(job_skills, resume_skills):
+    matched = job_skills & resume_skills
+    score = (len(matched) / len(job_skills)) * 100 if job_skills else 0.0
+    return round(score, 2), ", ".join(sorted(matched))
+# -------------------------------
+# Core ranking function
+# -------------------------------
+def rank_resumes(
+    job_post_id,
+    spreadsheet_id,
+    job_sheet_range,
+    resume_sheet_range,
+    credentials,
+    top_n=5
+):
+    service = build("sheets", "v4", credentials=credentials)
+
+    job_df = read_sheet_as_dataframe(service, spreadsheet_id, job_sheet_range)
+    resume_df = read_sheet_as_dataframe(service, spreadsheet_id, resume_sheet_range)
+
+    job_df["job_post_id"] = job_df["job_post_id"].astype(str)
+    job_row = job_df[job_df["job_post_id"].str.strip() == str(job_post_id).strip()]
+    if job_row.empty:
+        raise ValueError("Job post ID not found")
+
+    job_skills = parse_job_skills(job_row.iloc[0]["job_skills"])
+
+    # Parse resume skills properly
+    resume_df["resume_skills"] = resume_df["skills"].apply(parse_resume_skills)
+
+    # Compute scores
+    resume_df[["matching_score", "matched_skills"]] = resume_df[
+        "resume_skills"
+    ].apply(lambda x: pd.Series(compute_match_score(job_skills, x)))
+
+    # Rank
+    ranked = resume_df.sort_values("matching_score", ascending=False).head(top_n)
+
+    return ranked[["name", "email", "phone", "matching_score", "matched_skills"]]
+# -------------------------------
+# Example execution
+# -------------------------------
+if __name__ == "__main__":
+    job_post_id = '7416180920061202432'
+
+    result = rank_resumes(
+        job_post_id=job_post_id,
+        job_csv="/Users/satya/hr_chatbot/output/job_post.csv",
+        resume_csv="/Users/satya/hr_chatbot/output/parsed_resumes.csv",
+        top_n=5
+    )
+
+    print(result)
