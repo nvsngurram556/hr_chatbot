@@ -12,7 +12,6 @@ scope = [
     scope.strip()
     for scope in config["GOOGLE"]["scope"].split(",")
 ]
-service_account_file = config["GOOGLE"]["service_account_file"]
 spreadsheet_id = config["GOOGLE"]["spreadsheet_id"]
 resume_sheet_range = config["GOOGLE"]["resume_sheet_range"]
 job_sheet_range = config["GOOGLE"]["job_sheet_range"]
@@ -23,21 +22,11 @@ folder_id = config["DRIVE_FOLDERS"]["folder_id"]
 def get_drive_service():
     config, project_root = load_config()
 
-    service_account_file = (
-        project_root / config["GOOGLE"]["service_account_file"]
-    )
-
     scopes = [
         s.strip()
         for s in config["GOOGLE"]["scope"].split(",")
     ]
-
-    if not service_account_file.exists():
-        raise FileNotFoundError(
-            f"Service account file not found: {service_account_file}"
-        )
-
-    creds = Credentials.from_service_account_file(
+    creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
         scopes=scopes
     )
@@ -74,26 +63,4 @@ def authenticate_user(input_username, input_password):
     return None
 
 if __name__ == "__main__":
-    folder_id = folder_id
-    resumes = read_resumes_from_folder(folder_id)
-    for resume in resumes:
-        print(f"Filename: {resume['filename']}, Size: {len(resume['content'])} bytes")
-
-    screds = get_drive_service()
-    # Authenticate
-    client = gspread.authorize(screds)
-
-
-    # Open Google Sheet
-    sheet = client.open("candidate_info").worksheet("job")
-
-
-    # Insert a single row
-    sheet.append_row([
-        "Satya",
-        "2023ac05359@wilp.bits-pilani.ac.in",
-        "9148100349",
-        "python, sql, excel",
-    ])
-
-    print("Row inserted successfully!")
+   pass
