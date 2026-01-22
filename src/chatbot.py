@@ -15,7 +15,14 @@ folder_id = config["DRIVE_FOLDERS"]["folder_id"]
 sheet_id = config["GOOGLE"]["spreadsheet_id"]
 job_sheet_range = config["GOOGLE"]["job_sheet_range"]
 resume_sheet_range = config["GOOGLE"]["resume_sheet_range"]
-creds = get_drive_service()
+scope = [
+    scope.strip()
+    for scope in config["GOOGLE"]["scope"].split(",")
+]
+creds = Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"],
+    scopes=scope
+)
 client = gspread.authorize(creds)
 
 # Open Google Sheet
