@@ -7,4 +7,4 @@ google-auth
 pathlib
 streamlit
 google-auth
-googleapiclient
+google-api-python-client
