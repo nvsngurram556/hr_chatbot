@@ -117,13 +117,27 @@ def rank_resumes(
 # Example execution
 # -------------------------------
 if __name__ == "__main__":
-    job_post_id = '7416180920061202432'
+    from utils.config_loader import load_config
+    from gservice import get_gsheet_credentials
 
-    result = rank_resumes(
-        job_post_id=job_post_id,
-        job_csv="/Users/satya/hr_chatbot/output/job_post.csv",
-        resume_csv="/Users/satya/hr_chatbot/output/parsed_resumes.csv",
+    config = load_config("config/config.ini")
+    spreadsheet_id = config["GOOGLE_SHEETS"]["SPREADSHEET_ID"]
+    job_sheet_range = config["GOOGLE_SHEETS"]["JOB_SHEET_RANGE"]
+    resume_sheet_range = config["GOOGLE_SHEETS"]["RESUME_SHEET_RANGE"]
+
+    credentials = get_gsheet_credentials(
+        config["GOOGLE_API"]["CREDENTIALS_FILE"],
+        config["GOOGLE_API"]["TOKEN_FILE"]
+    )
+
+    job_post_id = "12345"  # Example job post ID
+    ranked_resumes = rank_resumes(
+        job_post_id,
+        spreadsheet_id,
+        job_sheet_range,
+        resume_sheet_range,
+        credentials,
         top_n=5
     )
 
-    print(result)
+    print(ranked_resumes.to_string(index=False))
