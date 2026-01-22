@@ -1,14 +1,11 @@
 import gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+from utils.config_loader import load_config
 import io, pandas as pd, configparser
 import os
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(BASE_DIR, "config/config.ini")
-
-config = configparser.ConfigParser()
-config.read(CONFIG_PATH)
+config, project_root = load_config()
 
 scope = [
     scope.strip()
@@ -23,8 +20,25 @@ folder_id = config["DRIVE_FOLDERS"]["folder_id"]
 
 
 def get_drive_service():
+    config, project_root = load_config()
+
+    service_account_file = (
+        project_root / config["GOOGLE"]["service_account_file"]
+    )
+
+    scopes = [
+        s.strip()
+        for s in config["GOOGLE"]["scope"].split(",")
+    ]
+
+    if not service_account_file.exists():
+        raise FileNotFoundError(
+            f"Service account file not found: {service_account_file}"
+        )
+
     creds = Credentials.from_service_account_file(
-        service_account_file, scopes=scope
+        service_account_file,
+        scopes=scopes
     )
     return creds
 

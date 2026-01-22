@@ -2,6 +2,8 @@ requests
 docx2txt
 pdfminer.six
 spacy
-auth
 gspread
+google-auth
+pathlib
+streamlit
 google-auth
