@@ -2,6 +2,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from utils.config_loader import load_config
+import streamlit as st
 import io, pandas as pd, configparser
 import os
 
@@ -37,7 +38,7 @@ def get_drive_service():
         )
 
     creds = Credentials.from_service_account_file(
-        service_account_file,
+        st.secrets["gcp_service_account"],
         scopes=scopes
     )
     return creds
