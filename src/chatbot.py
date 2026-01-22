@@ -4,13 +4,10 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from agent import HRChatAgent
 from gservice import authenticate_user, get_drive_service
+from utils.config_loader import load_config
 
 # Load configuration
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(BASE_DIR, "config/config.ini")
-
-config = configparser.ConfigParser()
-config.read(CONFIG_PATH)
+config, _ = load_config()
 
 ORG_URN = config["LINKEDIN_AUTH"]["org_urn"]
 ACCESS_TOKEN = config["LINKEDIN_AUTH"]["access_token"]
