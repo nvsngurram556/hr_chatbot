@@ -38,28 +38,19 @@ def authenticate_user(input_username, input_password):
 
     result = service.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id,
-        range=users_sheet_range
+        range="users!A2:D"
     ).execute()
 
     rows = result.get("values", [])
 
     for row in rows:
         # Defensive checks to avoid index errors
-        if len(row) < 3:
-            continue
-
-        name = row[0]
-        username = row[1]
-        password = row[2]
-        email = row[3] if len(row) > 3 else None
-
-        if username == input_username and password == input_password:
+        if row[1] == input_username and row[2] == input_password:
             return {
-                "name": name,
-                "username": username,
-                "email": email
+                "name": row[0],
+                "username": row[1],
+                "email": row[3]
             }
-
     return None
 
 if __name__ == "__main__":
