@@ -1,6 +1,4 @@
-import pandas as pd
-import re
-import ast
+import pandas as pd, re, ast
 from googleapiclient.discovery import build
 
 SKILL_ALIASES = {

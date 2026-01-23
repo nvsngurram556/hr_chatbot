@@ -1,9 +1,5 @@
-import docx2txt
+import docx2txt, re, spacy, streamlit as st, os, csv
 from pdfminer.high_level import extract_text
-import re
-import os
-import csv
-import spacy, configparser, streamlit as st
 
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
