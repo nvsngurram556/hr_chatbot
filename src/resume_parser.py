@@ -9,20 +9,15 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 import io
-base_dir = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(base_dir, "config/config.ini")
-
-config = configparser.ConfigParser()
-config.read(CONFIG_PATH)
 
 scopes = [
     scope.strip()
-    for scope in config["GOOGLE"]["scope"].split(",")
+    for scope in st.secrets["GOOGLE"]["scope"].split(",")
 ]
-service_account_file = config["GOOGLE"]["service_account_file"]
-spreadsheet_id = config["GOOGLE"]["spreadsheet_id"]
-resume_sheet_range = config["GOOGLE"]["resume_sheet_range"]
-folder_id = config["DRIVE_FOLDERS"]["folder_id"]
+service_account_file = st.secrets["GOOGLE"]["service_account_file"]
+spreadsheet_id = st.secrets["GOOGLE"]["spreadsheet_id"]
+resume_sheet_range = st.secrets["GOOGLE"]["resume_sheet_range"]
+folder_id = st.secrets["DRIVE_FOLDERS"]["folder_id"]
 
 creds = Credentials.from_service_account_info(
         st.secrets["gcp_service_account"],
