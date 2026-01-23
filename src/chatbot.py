@@ -210,7 +210,12 @@ elif st.session_state.intent == "SHOW_OPEN_POSITIONS":
 
             # Filter OPEN positions (case-insensitive)
             open_df = df[df["status"].str.lower() == "open"]
-
+            # ...existing code...
+            # After creating the DataFrame 'df'
+            selected_columns = ["job_skills", "job_post_id", "status"]
+            print(df[selected_columns])
+            # ...existing code...
+            open_df = open_df[selected_columns]
             if open_df.empty:
                 st.warning("⚠️ No open positions found.")
             else:
