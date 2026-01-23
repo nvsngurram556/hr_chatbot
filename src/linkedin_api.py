@@ -1,6 +1,4 @@
-import requests
-import json
-
+import requests, json
 # --- Configuration (REPLACE THESE) ---
 # Your LinkedIn Page's ID (Organizational URN, e.g., 'urn:li:organization:123456')
 

@@ -1,9 +1,6 @@
-import gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 import streamlit as st
-import io, pandas as pd, configparser
-import os
 
 
 scopes = [

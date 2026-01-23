@@ -1,11 +1,9 @@
-import streamlit as st, os, csv, pandas as pd
-import gspread, configparser
+import streamlit as st, pandas as pd, gspread
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from agent import HRChatAgent
 from gservice import authenticate_user, get_drive_service
-# Load configuratio
-
+# Load configuration
 ORG_URN = st.secrets["LINKEDIN_AUTH"]["org_urn"]
 ACCESS_TOKEN = st.secrets["LINKEDIN_AUTH"]["access_token"]
 folder_id = st.secrets["DRIVE_FOLDERS"]["folder_id"]
