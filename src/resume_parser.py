@@ -14,7 +14,6 @@ scopes = [
     scope.strip()
     for scope in st.secrets["GOOGLE"]["scope"].split(",")
 ]
-service_account_file = st.secrets["GOOGLE"]["service_account_file"]
 spreadsheet_id = st.secrets["GOOGLE"]["spreadsheet_id"]
 resume_sheet_range = st.secrets["GOOGLE"]["resume_sheet_range"]
 folder_id = st.secrets["DRIVE_FOLDERS"]["folder_id"]
