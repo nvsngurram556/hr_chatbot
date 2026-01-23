@@ -3,7 +3,7 @@ from pdfminer.high_level import extract_text
 import re
 import os
 import csv
-import spacy, configparser
+import spacy, configparser, streamlit as st
 
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
@@ -15,7 +15,7 @@ CONFIG_PATH = os.path.join(base_dir, "config/config.ini")
 config = configparser.ConfigParser()
 config.read(CONFIG_PATH)
 
-SCOPES = [
+scopes = [
     scope.strip()
     for scope in config["GOOGLE"]["scope"].split(",")
 ]
@@ -24,8 +24,9 @@ spreadsheet_id = config["GOOGLE"]["spreadsheet_id"]
 resume_sheet_range = config["GOOGLE"]["resume_sheet_range"]
 folder_id = config["DRIVE_FOLDERS"]["folder_id"]
 
-creds = Credentials.from_service_account_file(
-        service_account_file, scopes=SCOPES
+creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=scopes
     )
 
 def extract_resume_text(file_path=None, file_bytes=None, filename=None):
