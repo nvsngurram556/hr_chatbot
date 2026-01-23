@@ -1,10 +1,11 @@
 requests
 docx2txt
 pdfminer.six
-spacy
 gspread
 google-auth
 pathlib
 streamlit
 google-auth
 google-api-python-client
+spacy==3.7.2
+en-core-web-sm==3.7.1
