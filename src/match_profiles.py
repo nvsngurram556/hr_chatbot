@@ -117,27 +117,17 @@ def rank_resumes(
 # Example execution
 # -------------------------------
 if __name__ == "__main__":
-    from utils.config_loader import load_config
     from gservice import get_gsheet_credentials
 
-    config = load_config("config/config.ini")
-    spreadsheet_id = config["GOOGLE_SHEETS"]["SPREADSHEET_ID"]
-    job_sheet_range = config["GOOGLE_SHEETS"]["JOB_SHEET_RANGE"]
-    resume_sheet_range = config["GOOGLE_SHEETS"]["RESUME_SHEET_RANGE"]
+    creds = get_gsheet_credentials(st.secrets["google_service_account_file"])
 
-    credentials = get_gsheet_credentials(
-        config["GOOGLE_API"]["CREDENTIALS_FILE"],
-        config["GOOGLE_API"]["TOKEN_FILE"]
-    )
-
-    job_post_id = "12345"  # Example job post ID
     ranked_resumes = rank_resumes(
-        job_post_id,
-        spreadsheet_id,
-        job_sheet_range,
-        resume_sheet_range,
-        credentials,
+        job_post_id="JOB123",
+        spreadsheet_id=st.secrets["spreadsheet_id"],
+        job_sheet_range="JobPosts!A:D",
+        resume_sheet_range="Resumes!A:D",
+        credentials=creds,
         top_n=5
     )
 
-    print(ranked_resumes.to_string(index=False))
+    print(ranked_resumes)

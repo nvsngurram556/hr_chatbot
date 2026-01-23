@@ -4,24 +4,21 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from agent import HRChatAgent
 from gservice import authenticate_user, get_drive_service
-from utils.config_loader import load_config
+# Load configuratio
 
-# Load configuration
-config, _ = load_config()
-
-ORG_URN = config["LINKEDIN_AUTH"]["org_urn"]
-ACCESS_TOKEN = config["LINKEDIN_AUTH"]["access_token"]
-folder_id = config["DRIVE_FOLDERS"]["folder_id"]
-sheet_id = config["GOOGLE"]["spreadsheet_id"]
-job_sheet_range = config["GOOGLE"]["job_sheet_range"]
-resume_sheet_range = config["GOOGLE"]["resume_sheet_range"]
-scope = [
+ORG_URN = st.secrets["LINKEDIN_AUTH"]["org_urn"]
+ACCESS_TOKEN = st.secrets["LINKEDIN_AUTH"]["access_token"]
+folder_id = st.secrets["DRIVE_FOLDERS"]["folder_id"]
+sheet_id = st.secrets["GOOGLE"]["spreadsheet_id"]
+job_sheet_range = st.secrets["GOOGLE"]["job_sheet_range"]
+resume_sheet_range = st.secrets["GOOGLE"]["resume_sheet_range"]
+scopes = [
     scope.strip()
-    for scope in config["GOOGLE"]["scope"].split(",")
+    for scope in st.secrets["GOOGLE"]["scope"].split(",")
 ]
 creds = Credentials.from_service_account_info(
     st.secrets["gcp_service_account"],
-    scopes=scope
+    scopes=scopes
 )
 client = gspread.authorize(creds)
 
