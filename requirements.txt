@@ -4,6 +4,7 @@ pdfminer.six
 gspread
 google-auth
 pathlib
+pandas
 streamlit
 google-auth
 google-api-python-client
