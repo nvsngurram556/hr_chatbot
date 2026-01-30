@@ -74,8 +74,16 @@ def read_sheet_as_dataframe(service, spreadsheet_id, sheet_range):
 # -------------------------------
 def compute_match_score(job_skills, resume_skills):
     matched = job_skills & resume_skills
-    score = (len(matched) / len(job_skills)) * 100 if job_skills else 0.0
-    return round(score, 2), ", ".join(sorted(matched))
+    match_count = len(matched)
+
+    score = (match_count / len(job_skills)) * 100 if job_skills else 0.0
+
+    return (
+        round(score, 2),
+        match_count,
+        ", ".join(sorted(matched))
+    )
+
 # -------------------------------
 # Core ranking function
 # -------------------------------
@@ -103,14 +111,14 @@ def rank_resumes(
     resume_df["resume_skills"] = resume_df["skills"].apply(parse_resume_skills)
 
     # Compute scores
-    resume_df[["matching_score", "matched_skills"]] = resume_df[
-        "resume_skills"
-    ].apply(lambda x: pd.Series(compute_match_score(job_skills, x)))
+    resume_df[["matching_score", "matched_count", "matched_skills"]] = resume_df["resume_skills"].apply(lambda x: pd.Series(compute_match_score(job_skills, x)))
+    resume_df = resume_df.sort_values(by=["matching_score", "matched_count", "name"], ascending=[False, False, True])
+    resume_df["rank"] = (resume_df["matching_score"].rank(method="dense", ascending=False).astype(int))
 
     # Rank
-    ranked = resume_df.sort_values("matching_score", ascending=False).head(top_n)
+    ranked = resume_df.head(top_n)
 
-    return ranked[["name", "email", "phone", "matching_score", "matched_skills"]]
+    return ranked[["rank", "name", "email", "phone", "matching_score", "matched_count", "matched_skills"]]
 # -------------------------------
 # Example execution
 # -------------------------------
