@@ -1,5 +1,15 @@
-import pandas as pd, re, ast
+import pandas as pd, re, ast, streamlit as st
 from googleapiclient.discovery import build
+
+scopes = [
+    scope.strip()
+    for scope in st.secrets["GOOGLE"]["scope"].split(",")
+]
+spreadsheet_id = st.secrets["GOOGLE"]["spreadsheet_id"]
+resume_sheet_range = st.secrets["GOOGLE"]["resume_sheet_range"]
+job_sheet_range = st.secrets["GOOGLE"]["job_sheet_range"]
+folder_id = st.secrets["DRIVE_FOLDERS"]["folder_id"]
+
 
 SKILL_ALIASES = {
     "ml": "machine learning",
@@ -74,8 +84,16 @@ def read_sheet_as_dataframe(service, spreadsheet_id, sheet_range):
 # -------------------------------
 def compute_match_score(job_skills, resume_skills):
     matched = job_skills & resume_skills
-    score = (len(matched) / len(job_skills)) * 100 if job_skills else 0.0
-    return round(score, 2), ", ".join(sorted(matched))
+    match_count = len(matched)
+
+    score = (match_count / len(job_skills)) * 100 if job_skills else 0.0
+
+    return (
+        round(score, 2),
+        match_count,
+        ", ".join(sorted(matched))
+    )
+
 # -------------------------------
 # Core ranking function
 # -------------------------------
@@ -103,27 +121,27 @@ def rank_resumes(
     resume_df["resume_skills"] = resume_df["skills"].apply(parse_resume_skills)
 
     # Compute scores
-    resume_df[["matching_score", "matched_skills"]] = resume_df[
-        "resume_skills"
-    ].apply(lambda x: pd.Series(compute_match_score(job_skills, x)))
+    resume_df[["matching_score", "matched_count", "matched_skills"]] = resume_df["resume_skills"].apply(lambda x: pd.Series(compute_match_score(job_skills, x)))
+    resume_df = resume_df.sort_values(by=["matching_score", "matched_count", "name"], ascending=[False, False, True])
+    resume_df["rank"] = (resume_df["matching_score"].rank(method="dense", ascending=False).astype(int))
 
     # Rank
-    ranked = resume_df.sort_values("matching_score", ascending=False).head(top_n)
+    ranked = resume_df.head(top_n)
 
-    return ranked[["name", "email", "phone", "matching_score", "matched_skills"]]
+    return ranked[["rank", "name", "email", "phone", "matching_score", "matched_count", "matched_skills"]]
 # -------------------------------
 # Example execution
 # -------------------------------
 if __name__ == "__main__":
-    from gservice import get_gsheet_credentials
+    from gservice import get_drive_service
 
-    creds = get_gsheet_credentials(st.secrets["google_service_account_file"])
+    creds = get_drive_service()
 
     ranked_resumes = rank_resumes(
-        job_post_id="JOB123",
-        spreadsheet_id=st.secrets["spreadsheet_id"],
-        job_sheet_range="JobPosts!A:D",
-        resume_sheet_range="Resumes!A:D",
+        job_post_id="7422102829710102528",
+        spreadsheet_id=spreadsheet_id,
+        job_sheet_range=job_sheet_range,
+        resume_sheet_range=resume_sheet_range,
         credentials=creds,
         top_n=5
     )
