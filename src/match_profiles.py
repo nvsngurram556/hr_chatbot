@@ -1,5 +1,15 @@
-import pandas as pd, re, ast
+import pandas as pd, re, ast, streamlit as st
 from googleapiclient.discovery import build
+
+scopes = [
+    scope.strip()
+    for scope in st.secrets["GOOGLE"]["scope"].split(",")
+]
+spreadsheet_id = st.secrets["GOOGLE"]["spreadsheet_id"]
+resume_sheet_range = st.secrets["GOOGLE"]["resume_sheet_range"]
+job_sheet_range = st.secrets["GOOGLE"]["job_sheet_range"]
+folder_id = st.secrets["DRIVE_FOLDERS"]["folder_id"]
+
 
 SKILL_ALIASES = {
     "ml": "machine learning",
@@ -123,15 +133,15 @@ def rank_resumes(
 # Example execution
 # -------------------------------
 if __name__ == "__main__":
-    from gservice import get_gsheet_credentials
+    from gservice import get_drive_service
 
-    creds = get_gsheet_credentials(st.secrets["google_service_account_file"])
+    creds = get_drive_service()
 
     ranked_resumes = rank_resumes(
-        job_post_id="JOB123",
-        spreadsheet_id=st.secrets["spreadsheet_id"],
-        job_sheet_range="JobPosts!A:D",
-        resume_sheet_range="Resumes!A:D",
+        job_post_id="7422102829710102528",
+        spreadsheet_id=spreadsheet_id,
+        job_sheet_range=job_sheet_range,
+        resume_sheet_range=resume_sheet_range,
         credentials=creds,
         top_n=5
     )
